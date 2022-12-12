@@ -1,5 +1,5 @@
 ***********************
-Unfolding - Map Library
+Airport - Map Library
 ***********************
 Copyright (C) 2015 Till Nagel, and contributors
 
@@ -35,4 +35,12 @@ http://opendatacommons.org/licenses/odbl/1.0/
 
 If you redistribute or otherwise use this data outside of this project,
 please read and follow the restrictions in the above license.
- 
+
+
+**************************************
+City data - geojson.xyz
+**************************************
+This stater code includes the database citymap.geojson.
+This database was downloaded from 
+
+https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_populated_places_simple.geojson 

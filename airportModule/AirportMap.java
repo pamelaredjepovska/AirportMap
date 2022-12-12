@@ -30,7 +30,7 @@ public class AirportMap extends PApplet {
 	
 	UnfoldingMap map;
 	
-	private String airportImg = "airplaneIcon4.png";
+	//private String airportImg = "airplaneIcon4.png";
 	
 	// Show airports with the this altitude as the minimum
 	public static final int MIN_ALTIDUDE = 4000;
@@ -83,7 +83,6 @@ public class AirportMap extends PApplet {
 		for (Feature city : cities) 
 		{
 			cityMarkers.add(new CityMarker(city));
-			//System.out.println(city.getProperty("pop_max") + " " + city.getProperty("pop_max").getClass());
 		}
 		
 		/* get features from airport data
@@ -91,10 +90,6 @@ public class AirportMap extends PApplet {
 		 * Properties: country, altitude, code, city, name
 		 */
 		features = ParseFeed.parseAirports(this, "airports.dat");
-		/*for (PointFeature f : features)
-		{
-			System.out.println(f.getLocation() + " ," + f.getProperties());
-		}*/
 		
 		// List for markers, hashmap for quicker access when matching with routes
 		airportMarkers = new ArrayList<Marker>();
@@ -118,17 +113,7 @@ public class AirportMap extends PApplet {
 				// Put airport in hashmap with OpenFlights unique id for key
 				airports.put(Integer.parseInt(feature.getId()), feature.getLocation());
 			}
-			//System.out.println(Integer.parseInt(feature.getId()) + " " + feature.getLocation());
-			//break;
-		
 		}
-		
-		/*for (Integer k:airports.keySet())
-		{
-			System.out.println(k + " | " + airports.get(k));
-			break;
-		}*/
-		
 		
 		// Parse route data
 		/* Locations: (x1,y1),(x2,y2)
@@ -136,7 +121,8 @@ public class AirportMap extends PApplet {
 		 */
 		routes = ParseFeed.parseRoutes(this, routesFile);
 		routeList = new ArrayList<Marker>();
-		for(ShapeFeature route : routes) {
+		for(ShapeFeature route : routes) 
+		{
 			
 			// Get source and destination airportIds
 			int source = Integer.parseInt((String)route.getProperty("source"));
@@ -150,18 +136,10 @@ public class AirportMap extends PApplet {
 			}
 			
 			SimpleLinesMarker sl = new SimpleLinesMarker(route.getLocations(), route.getProperties());
-		
-			//System.out.println(sl.getProperties());
-			
+					
 			//UNCOMMENT IF YOU WANT TO SEE ALL ROUTES
 			routeList.add(sl);
 		}
-		
-		/*for (ShapeFeature sf:routes)
-		{
-			System.out.println(sf.getLocations() + " | " + sf.getProperties());
-		}*/
-		
 		
 		
 		//UNCOMMENT IF YOU WANT TO SEE ALL ROUTES
@@ -172,7 +150,8 @@ public class AirportMap extends PApplet {
 		
 	}
 	
-	public void draw() {
+	public void draw() 
+	{
 		background(0);
 		map.draw();
 		addKey();
@@ -185,7 +164,7 @@ public class AirportMap extends PApplet {
 	@Override
 	public void mouseMoved()
 	{
-		// clear the last selection
+		// Clear the last selection
 		if (lastSelected != null) {
 			lastSelected.setSelected(false);
 			lastSelected = null;
@@ -200,14 +179,16 @@ public class AirportMap extends PApplet {
 	private void selectMarkerIfHover(List<Marker> markers)
 	{
 		// Abort if there's already a marker selected
-		if (lastSelected != null) {
+		if (lastSelected != null) 
+		{
 			return;
 		}
 		
 		for (Marker m : markers) 
 		{
 			CommonMarker marker = (CommonMarker)m;
-			if (marker.isInside(map,  mouseX, mouseY)) {
+			if (marker.isInside(map,  mouseX, mouseY)) 
+			{
 				lastSelected = marker;
 				marker.setSelected(true);
 				return;
@@ -403,19 +384,5 @@ public class AirportMap extends PApplet {
 		text("< 5000", xbase+50, ybase+140);
 		text("< 10 000", xbase+50, ybase+160);
 		text("> 10 000", xbase+50, ybase+180);
-
-		/*text("Past hour", xbase+50, ybase+200);
-		
-		fill(255, 255, 255);
-		int centerx = xbase+35;
-		int centery = ybase+200;
-		ellipse(centerx, centery, 12, 12);
-
-		strokeWeight(2);
-		line(centerx-8, centery-8, centerx+8, centery+8);
-		line(centerx-8, centery+8, centerx+8, centery-8);*/
-		
-		
 	}
-
 }

@@ -1,100 +1,347 @@
 package airportModule;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
+import de.fhpotsdam.unfolding.UnfoldingMap;
 import de.fhpotsdam.unfolding.data.Feature;
+import de.fhpotsdam.unfolding.data.GeoJSONReader;
 import de.fhpotsdam.unfolding.data.PointFeature;
+import de.fhpotsdam.unfolding.data.ShapeFeature;
+import de.fhpotsdam.unfolding.marker.Marker;
 import de.fhpotsdam.unfolding.marker.SimpleLinesMarker;
-import processing.core.PConstants;
-import processing.core.PGraphics;
+import de.fhpotsdam.unfolding.marker.SimplePointMarker;
+import de.fhpotsdam.unfolding.utils.MapUtils;
+import module6.EarthquakeMarker;
+import airportModule.CityMarker;
+import airportModule.CommonMarker;
+import de.fhpotsdam.unfolding.geo.Location;
+import parsing.ParseFeed;
+import processing.core.PApplet;
 
 /**
- * A class to represent AirportMarkers on a world map.
+ * An applet that shows airports, routes and cities on a world map.
  *
  */
-public class AirportMarker extends CommonMarker {
-	public static List<SimpleLinesMarker> routes;
+public class AirportMap extends PApplet {
 
-	public static int TRI_SIZE = 5;
-	public static final int MIN_ALTIDUDE = 5000;
-	public static final int MAX_ALTIDUDE = 10000;
-	protected float radius; // The size of the marker
+	UnfoldingMap map;
 
-	/*
-	 * Location: (x,y) Properties: country, altitude, code, city, name
+	// private String airportImg = "airplaneIcon4.png";
+
+	// Show airports with the this altitude as the minimum
+	public static final int MIN_ALTIDUDE = 4000;
+
+	// Show airports that are within this distance of a city (km)
+	public static final int MIN_CITY_DISTANCE = 500;
+
+	// Show cities that are within this distance of an airport (km)
+	public static final int MIN_AIRPORT_DISTANCE = 1000;
+
+	// You can ignore this. It's to get rid of eclipse warnings
+	private static final long serialVersionUID = 1L;
+
+	// A marker for each airport
+	private List<Marker> airportMarkers;
+
+	// List of features for routes
+	private List<ShapeFeature> routes;
+
+	// A marker for each route
+	List<Marker> routeList;
+
+	// List of features for each airport
+	private List<PointFeature> features;
+
+	// The file containing city names and info
+	private String cityFile = "citymap.geojson";
+
+	// The file containing all the routes between airports
+	private String routesFile = "routes.dat";
+
+	// Marker for each city
+	private List<Marker> cityMarkers;
+
+	private CommonMarker lastSelected;
+	private CommonMarker lastClicked;
+
+	public void setup() {
+		// setting up PAppler
+		size(1300, 900, OPENGL);
+
+		// setting up map and default events
+		map = new UnfoldingMap(this, 120, 50, 1250, 850);
+		MapUtils.createDefaultEventDispatcher(this, map);
+
+		// Read in city map
+		List<Feature> cities = GeoJSONReader.loadData(this, cityFile);
+		cityMarkers = new ArrayList<Marker>();
+		for (Feature city : cities) {
+			cityMarkers.add(new CityMarker(city));
+		}
+
+		/*
+		 * Get features from airport data Location: (x,y) Properties: country, altitude,
+		 * code, city, name
+		 */
+		features = ParseFeed.parseAirports(this, "airports.dat");
+
+		// List for markers, hashmap for quicker access when matching with routes
+		airportMarkers = new ArrayList<Marker>();
+		HashMap<Integer, Location> airports = new HashMap<Integer, Location>();
+
+		// Create markers from features
+		/*
+		 * Key: unique ID for key Value: location (x,y)
+		 */
+
+		for (PointFeature feature : features) {
+			// To limit the amount of markers on the map
+			if (Integer.parseInt((String) feature.getProperty("altitude")) > MIN_ALTIDUDE) {
+				// ImageMarker m = new ImageMarker(feature, loadImage(airportImg));
+
+				// No ImageMarker
+				airportMarkers.add(new AirportMarker(feature));
+
+				// Put airport in hashmap with OpenFlights unique id for key
+				airports.put(Integer.parseInt(feature.getId()), feature.getLocation());
+			}
+		}
+
+		// Parse route data
+		/*
+		 * Locations: (x1,y1),(x2,y2) Properties: destination, source
+		 */
+		routes = ParseFeed.parseRoutes(this, routesFile);
+		routeList = new ArrayList<Marker>();
+		for (ShapeFeature route : routes) {
+
+			// Get source and destination airportIds
+			int source = Integer.parseInt((String) route.getProperty("source"));
+			int dest = Integer.parseInt((String) route.getProperty("destination"));
+
+			// Get locations for airports on route
+			if (airports.containsKey(source) && airports.containsKey(dest)) {
+				route.addLocation(airports.get(source));
+				route.addLocation(airports.get(dest));
+			}
+
+			SimpleLinesMarker sl = new SimpleLinesMarker(route.getLocations(), route.getProperties());
+
+			// UNCOMMENT IF YOU WANT TO SEE ALL ROUTES
+			routeList.add(sl);
+		}
+		
+		// UNCOMMENT IF YOU WANT TO SEE ALL ROUTES
+		map.addMarkers(routeList);
+		hideRouteMarkers();
+		map.addMarkers(cityMarkers);
+		map.addMarkers(airportMarkers);
+
+	}
+
+	public void draw() {
+		background(0);
+		map.draw();
+		addKey();
+
+	}
+
+	/**
+	 * Event handler that gets called automatically when the mouse moves.
 	 */
-	public AirportMarker(Feature airport) {
-		super(((PointFeature) airport).getLocation(), airport.getProperties());
-
-	}
-
 	@Override
-	public void drawMarker(PGraphics pg, float x, float y) {
-		// Determine the color of the marker based on the altitude
-		colorDetermine(pg);
-		pg.ellipse(x, y, radius, radius);
+	public void mouseMoved() {
+		// Clear the last selection
+		if (lastSelected != null) {
+			lastSelected.setSelected(false);
+			lastSelected = null;
+
+		}
+		selectMarkerIfHover(airportMarkers);
+		selectMarkerIfHover(cityMarkers);
 	}
 
-	@Override
-	public void showTitle(PGraphics pg, float x, float y) {
-		// Show rectangle with title
-		String name = "Name: " + getName();
-		String loc = "Loc: " + getCountry() + ", " + getCity();
+	// If there is a marker selected
+	private void selectMarkerIfHover(List<Marker> markers) {
+		// Abort if there's already a marker selected
+		if (lastSelected != null) {
+			return;
+		}
 
-		pg.pushStyle();
-
-		pg.fill(255, 255, 255);
-		pg.textSize(12);
-		pg.rectMode(PConstants.CORNER);
-		pg.rect(x, y - TRI_SIZE - 39, Math.max(pg.textWidth(name), pg.textWidth(loc)) + 6, 39);
-		pg.fill(0, 0, 0);
-		pg.textAlign(PConstants.LEFT, PConstants.TOP);
-		pg.text(name, x + 3, y - TRI_SIZE - 33);
-		pg.text(loc, x + 3, y - TRI_SIZE - 18);
-
-		pg.popStyle();
-
-		// Show routes
-	}
-
-	// Determine color and raidus of marker from altitude
-	// We use: < 5000 = red, < 10 000 = blue, > 10 000 = yellow
-	private void colorDetermine(PGraphics pg) {
-		float altitude = getAltitude();
-
-		if (altitude < MIN_ALTIDUDE) {
-			pg.fill(255, 0, 0);
-			this.radius = 8;
-		} else if (altitude < MAX_ALTIDUDE) {
-			pg.fill(0, 0, 255);
-			this.radius = 10;
-		} else {
-			pg.fill(255, 255, 0);
-			this.radius = 12;
+		for (Marker m : markers) {
+			CommonMarker marker = (CommonMarker) m;
+			if (marker.isInside(map, mouseX, mouseY)) {
+				lastSelected = marker;
+				marker.setSelected(true);
+				return;
+			}
 		}
 	}
 
-	/*
-	 * Local getters for some airport properties.
+	/**
+	 * The event handler for mouse clicks It will display an airport and its nearby
+	 * cities and its routes Or if a city is clicked, it will display all the nearby
+	 * airport
 	 */
-	public String getCountry() {
-		return getStringProperty("country").replaceAll("\"", "");
+	@Override
+	public void mouseClicked() {
+		if (lastClicked != null) {
+			hideRouteMarkers();
+			unhideMarkers();
+			lastClicked = null;
+		} else if (lastClicked == null) {
+			checkAirportsForClick();
+			if (lastClicked == null) {
+				checkCitiesForClick();
+			}
+		}
 	}
 
-	public String getCity() {
-		return getStringProperty("city").replaceAll("\"", "");
+	// Helper method that will check if a city marker was clicked on
+	// and respond appropriately
+	private void checkCitiesForClick() {
+		if (lastClicked != null)
+			return;
+
+		// Loop over the city markers to see if one of them is selected
+		for (Marker marker : cityMarkers) {
+			if (!marker.isHidden() && marker.isInside(map, mouseX, mouseY)) {
+				lastClicked = (CommonMarker) marker;
+				// Hide all the other city markers that aren't clicked
+				for (Marker mhide : cityMarkers) {
+					if (mhide != lastClicked) {
+						mhide.setHidden(true);
+					}
+				}
+
+				for (Marker ahide : airportMarkers) {
+					AirportMarker airportMarker = (AirportMarker) ahide;
+					/*
+					 * If the distance between the city and the airport is larger than the min
+					 * distance, hide that airport marker
+					 */
+					if (airportMarker.getDistanceTo(marker.getLocation()) > MIN_CITY_DISTANCE) {
+						airportMarker.setHidden(true);
+					}
+				}
+
+				return;
+			}
+		}
 	}
 
-	public String getName() {
-		return getStringProperty("name").replaceAll("\"", "");
+	// Helper method that will check if an airport marker was clicked on
+	// and respond appropriately
+	private void checkAirportsForClick() {
+		if (lastClicked != null)
+			return;
+
+		// Loop over the airport markers to see if one of them is selected
+		for (Marker m : airportMarkers) {
+			AirportMarker marker = (AirportMarker) m;
+
+			if (!marker.isHidden() && marker.isInside(map, mouseX, mouseY)) {
+				lastClicked = marker;
+
+				/*
+				 * Show all the routes from the clicked airport marker and its destination
+				 * markers
+				 */
+				List<Location> airportRoute = new ArrayList<Location>(); // List of destination locations of the clicked marker
+				for (Marker route : routeList) {
+					SimpleLinesMarker r = (SimpleLinesMarker) route;
+					if (r.getLocations().contains(lastClicked.getLocation())) {
+						route.setHidden(false);
+						airportRoute.add(r.getLocation(1)); // Add the destination location to the list
+					}
+				}
+
+				// Hide all the other airport markers that aren't clicked and aren't en route
+				for (Marker mhide : airportMarkers) {
+					if (mhide != lastClicked && !airportRoute.contains(mhide.getLocation())) {
+						mhide.setHidden(true);
+					}
+				}
+
+				for (Marker mhide : cityMarkers) {
+					/*
+					 * If the distance between the airport and the city is larger than the min
+					 * distance, hide that city marker
+					 */
+					if (mhide.getDistanceTo(marker.getLocation()) > MIN_AIRPORT_DISTANCE) {
+						mhide.setHidden(true);
+					}
+				}
+
+				return;
+			}
+		}
 	}
 
-	public int getAltitude() {
-		return Integer.parseInt(getStringProperty("altitude"));
+	// Loop over and unhide all markers (airports and cities)
+	private void unhideMarkers() {
+		for (Marker marker : airportMarkers) {
+			marker.setHidden(false);
+		}
+
+		for (Marker marker : cityMarkers) {
+			marker.setHidden(false);
+		}
 	}
 
-	public int getCode() {
-		return Integer.parseInt(getStringProperty("code"));
+	// Loop over and hide all route markers
+	private void hideRouteMarkers() {
+		for (Marker marker : routeList) {
+			marker.setHidden(true);
+		}
 	}
 
+	// Helper method to draw key in GUI
+	private void addKey() {
+		// Remember you can use Processing's graphics methods here
+		fill(255, 250, 240);
+
+		int xbase = 25;
+		int ybase = 50;
+
+		rect(xbase, ybase, 150, 250);
+
+		fill(0);
+		textAlign(LEFT, CENTER);
+		textSize(12);
+		text("Airport Key", xbase + 25, ybase + 25);
+
+		fill(150, 30, 30);
+		int tri_xbase = xbase + 35;
+		int tri_ybase = ybase + 50;
+		triangle(tri_xbase, tri_ybase - CityMarker.TRI_SIZE, tri_xbase - CityMarker.TRI_SIZE,
+				tri_ybase + CityMarker.TRI_SIZE, tri_xbase + CityMarker.TRI_SIZE, tri_ybase + CityMarker.TRI_SIZE);
+
+		fill(0, 0, 0);
+		textAlign(LEFT, CENTER);
+		text("City Marker", tri_xbase + 15, tri_ybase);
+
+		text("Airport", xbase + 50, ybase + 70);
+		// text("Ocean Quake", xbase+50, ybase+90);
+		text("Altitude: ", xbase + 25, ybase + 115);
+
+		fill(255, 255, 255);
+		ellipse(xbase + 35, ybase + 70, 10, 10);
+		// rect(xbase+35-5, ybase+90-5, 10, 10);
+
+		fill(color(255, 0, 0));
+		ellipse(xbase + 35, ybase + 140, 12, 12);
+		fill(color(0, 0, 255));
+		ellipse(xbase + 35, ybase + 160, 12, 12);
+		fill(color(255, 255, 0));
+		ellipse(xbase + 35, ybase + 180, 12, 12);
+
+		textAlign(LEFT, CENTER);
+		fill(0, 0, 0);
+		text("< 5000", xbase + 50, ybase + 140);
+		text("< 10 000", xbase + 50, ybase + 160);
+		text("> 10 000", xbase + 50, ybase + 180);
+	}
 }

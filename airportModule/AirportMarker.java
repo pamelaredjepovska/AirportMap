@@ -11,8 +11,6 @@ import processing.core.PGraphics;
 /** 
  * A class to represent AirportMarkers on a world map.
  *   
- * @author Adam Setters and the UC San Diego Intermediate Software Development
- * MOOC team
  *
  */
 public class AirportMarker extends CommonMarker {
@@ -32,15 +30,17 @@ public class AirportMarker extends CommonMarker {
 	}
 	
 	@Override
-	public void drawMarker(PGraphics pg, float x, float y) {
+	public void drawMarker(PGraphics pg, float x, float y) 
+	{
 		// Determine the color of the marker based on the altitude
 		colorDetermine(pg);
 		pg.ellipse(x, y, radius, radius);
 	}
 
 	@Override
-	public void showTitle(PGraphics pg, float x, float y) {
-		 // show rectangle with title
+	public void showTitle(PGraphics pg, float x, float y) 
+	{
+		// Show rectangle with title
 		String name = "Name: " + getName();
 		String loc = "Loc: " + getCountry() + ", " + getCity();
 		
@@ -57,10 +57,10 @@ public class AirportMarker extends CommonMarker {
 		
 		pg.popStyle();
 		
-		// show routes
+		// Show routes
 	}
 	
-	// determine color and raidus of marker from altitude
+	// Determine color and raidus of marker from altitude
 	// We use: < 5000 = red, < 10 000 = blue, > 10 000 = yellow
 	private void colorDetermine(PGraphics pg) 
 	{
@@ -83,7 +83,7 @@ public class AirportMarker extends CommonMarker {
 		}
 	}
 	
-	/* Local getters for some city properties.  
+	/* Local getters for some airport properties.  
 	 */
 	public String getCountry()
 	{

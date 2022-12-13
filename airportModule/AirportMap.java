@@ -362,7 +362,6 @@ public class AirportMap extends PApplet {
 		text("City Marker", tri_xbase + 15, tri_ybase);
 		
 		text("Airport", xbase+50, ybase+70);
-		//text("Ocean Quake", xbase+50, ybase+90);
 		text("Altitude: ", xbase+25, ybase+115);
 		
 		fill(255, 255, 255);
@@ -370,7 +369,6 @@ public class AirportMap extends PApplet {
 				ybase+70, 
 				10, 
 				10);
-		//rect(xbase+35-5, ybase+90-5, 10, 10);
 		
 		fill(color(255, 0, 0));
 		ellipse(xbase+35, ybase+140, 12, 12);
